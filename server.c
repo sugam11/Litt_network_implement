@@ -16,9 +16,9 @@
 struct player{
 		int num_of_cards;
 		int player_score;
-		struct cards array[];
+		//struct cards array[];
 		char team;
-		char username[];
+		char username[10];
         int player_fd;
 };
 
@@ -77,6 +77,7 @@ int main(){
     
     while(numOfClientConnected < 8){
         //Client structure Initialisation
+        unsigned int clilen = sizeof(struct sockaddr_in);
         struct   sockaddr_in client;
         Player[numOfClientConnected].player_fd = accept(socket_fd,(struct sockaddr*)&client,&clilen);
         send(Player[numOfClientConnected].player_fd,client_connected_message,strlen(client_connected_message),0);
