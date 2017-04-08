@@ -32,7 +32,7 @@ struct team{
 int main(){
 	
    //Fixed Strings for communication
-    
+    char client_connected_message[] = "Welcome to LITT!!";
     char game_start_message[] = "Game is Starting";
     
     
@@ -79,6 +79,8 @@ int main(){
         //Client structure Initialisation
         struct   sockaddr_in client;
         Player[numOfClientConnected].player_fd = accept(socket_fd,(struct sockaddr*)&client,&clilen);
+        send(Player[numOfClientConnected].player_fd,client_connected_message,strlen(client_connected_message),0);
+        numOfClientConnected++;
     }
     
     for(int i = 0;i < 8;i++){
