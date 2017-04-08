@@ -24,10 +24,10 @@ struct node{
 
 struct node *searchCard(struct node *head,struct card req){
 	struct node* current = head;
-	struct node* parent;  // Initialize current
+	//struct node* parent;  // Initialize current
     while (current != NULL){
         if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite)
-            return parent;
+            return current;
         current = current->next;
     }
     return NULL;
@@ -52,8 +52,20 @@ struct node *addCard(struct node *head,struct card req){
 	return head;
 }
 
-struct node *removeCard(struct node *head,struct node req){
-	
+struct node *removeCard(struct node *head,struct card req){
+	struct node* current = head;
+	struct node* parent;  // Initialize current
+    while (current != NULL){
+        if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite){
+        	if(current==head)
+        		head = head->next;
+        	else
+        		parent->next = current->next;
+        }
+       	parent = current;
+        current = current->next;
+    }
+    return head;
 }
 
 int main(){
