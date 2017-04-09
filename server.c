@@ -11,29 +11,94 @@
 #include <sys/shm.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <time.h>
 
+enum value{
+ace = 1, two, three, four, five, six, seven, eight, nine, ten, jack, queen, king
+};
+
+enum suite{
+clubs = 1, spades, diamonds, hearts
+};
+
+struct card{
+	int num;
+	enum value cardVal;
+	enum suite cardSuite;
+};
+
+struct node{
+	struct card c;
+	struct node *next;
+};
 
 struct player{
 		int num_of_cards;
 		int player_score;
-		//struct cards array[];
+		struct node *hand;
 		char team;
-		char username[10];
+		char username[32];
         int player_fd;
 };
 
 struct team{
 		int num_of_players;
 		int team_score;
-		struct player arr[];
+		struct player *arr[];
 };
 
+struct node *searchCard(struct node *head,struct card req){
+	struct node* current = head;
+	//struct node* parent;  // Initialize current
+    while (current != NULL){
+        if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite)
+            return current;
+        current = current->next;
+    }
+    return NULL;
+}
+
+struct node *addCard(struct node *head,struct card req){
+	struct node *new;
+	new = (struct node *)malloc(sizeof(struct node));
+	new->c.cardVal = req.cardVal;
+	new->c.cardSuite = req.cardSuite;
+	new->next = NULL;
+	
+	if(head==NULL)
+		head = new;
+	else{
+		struct node* current = head;
+		while(current->next!=NULL)
+			current = current->next;
+		current->next = new;
+	}
+	
+	return head;
+}
+
+struct node *removeCard(struct node *head,struct card req){
+	struct node* current = head;
+	struct node* parent;  // Initialize current
+    while (current != NULL){
+        if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite){
+        	if(current==head)
+        		head = head->next;
+        	else
+        		parent->next = current->next;
+        }
+       	parent = current;
+        current = current->next;
+    }
+    return head;
+}
 
 int main(){
 	
    //Fixed Strings for communication
-    char client_connected_message[] = "Welcome to LITT!!";
-    char game_start_message[] = "Game is Starting";
+    char client_connected_message[] = "Welcome to LITT!!\nEnter UserName,team A or B";
+    char game_start_message[] = "Game is Starting\nDealing cards to each player";
+    char wait_msg[] = "Waiting for other players to connect...";
     
     
 //Server Variables
@@ -44,13 +109,13 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12567;
+	int portnum = 12571;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("192.168.0.1");;
+    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
     serv_addr.sin_port = htons(portnum);
 	
 	
@@ -73,7 +138,9 @@ int main(){
     
     //Player structure Initialisation
     struct player Player[8];
-    
+    struct team A,B;
+    char buffer[1024];
+    int buflen,countA,countB;
     
     while(numOfClientConnected < 8){
         //Client structure Initialisation
@@ -81,12 +148,52 @@ int main(){
         struct   sockaddr_in client;
         Player[numOfClientConnected].player_fd = accept(socket_fd,(struct sockaddr*)&client,&clilen);
         send(Player[numOfClientConnected].player_fd,client_connected_message,strlen(client_connected_message),0);
+        
+        buflen=recv(Player[numOfClientConnected].player_fd,buffer,sizeof(buffer),0);	//recv username and team and store info
+        buffer[buflen] = '\0';
+        strncpy(Player[numOfClientConnected].username,buffer,buflen-2);
+        printf("username=%s\n",Player[numOfClientConnected].username);
+        Player[numOfClientConnected].team = buffer[buflen-1];
+        memset(buffer,'\0',sizeof(buffer));
+        
+        Player[numOfClientConnected].player_score = 0;					//initialize
+        Player[numOfClientConnected].num_of_cards = 0;
+        
+        if(Player[numOfClientConnected].team == 'A')						//add player to team
+        	A.arr[countA]==&Player[numOfClientConnected];
+        else
+        	B.arr[countB]==&Player[numOfClientConnected];
+        
+        printf("before wait msg\n");
+        send(Player[numOfClientConnected].player_fd,wait_msg,strlen(wait_msg),0);
+        
         numOfClientConnected++;
     }
+    
+    srand(time(0));
     
     for(int i = 0;i < 8;i++){
         send(Player[i].player_fd,game_start_message,strlen(game_start_message),0);
     }
+    
+    for(int i=1;i<53;i++){				//initial distribution of cards
+    	if(i>24&&i<29)
+    		continue;
+       	struct card c;
+    	c.num = i;
+    	c.cardSuite = i%4;
+    	if(c.cardSuite==0)
+    		c.cardSuite == 4;
+    	c.cardVal = ((c.num-c.cardSuite)/4)+1;
+    	printf("%d,%u,%u",c.num,c.cardSuite,c.cardVal);
+    	
+    	int j = (rand())%8;
+    	while(Player[j].num_of_cards==12)
+    		j = (rand())%8;
+    	
+    	addCard(Player[j].hand,c);
+    }
+    
+    
     return 0;
-
 }
