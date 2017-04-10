@@ -33,7 +33,7 @@ int main(){
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
   
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12559);
+  serverAddr.sin_port = htons(12565);
   serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
@@ -67,8 +67,10 @@ int main(){
   
   while(1){
   	recv(clientSocket, &action, 1024, 0);
+  	printf("action = %d\n",action);
   	switch (action){
   		case 1:
+  		printf("case 1 entered\n");
   		printf("Your Turn\n");
   		recvlen=recv(clientSocket, buffer, 1024, 0);
   		buffer[recvlen] = '\0';
@@ -76,7 +78,7 @@ int main(){
   		memset(buffer, '\0', sizeof(buffer));
   		
   		printf("claim LITT?\nRespond with 'y' or 'n'.");
-  		scanf("%c",&c);
+  		scanf(" %c",&c);
   		send(clientSocket, &c, sizeof(c), 0);
   		if(c!='Y'&&c!='y'){											//litt not claimed
   			printf("Name the player followed by card\n");

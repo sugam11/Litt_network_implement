@@ -88,7 +88,7 @@ struct node *addCard(struct node *head,struct card req){
 			current = current->next;
 		current->next = new;
 	}
-	printCards(head);
+	//printCards(head);
 	return head;
 }
 
@@ -119,12 +119,13 @@ void displayHand(int i){
 		strcat(listOfCards,oneCard);
 		current = current->next;
 	}
-	printf("hand=%s\n",listOfCards);
+	//printf("hand=%s\n",listOfCards);
 	send(Player[i].player_fd,listOfCards,strlen(listOfCards),0);
 }
 
 int main(){
 	
+	srand(time(0));
    //Fixed Strings for communication
     char client_connected_message[] = "Welcome to LITT!!\nEnter UserName,team A or B";
     char game_start_message[] = "Game is Starting\nDealing cards to each player";
@@ -139,7 +140,7 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12559;
+	int portnum = 12565;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
@@ -211,9 +212,7 @@ int main(){
         
         numOfClientConnected++;
     }
-    
-    srand(time(0));
-    
+      
     for(int i = 0;i < 8;i++){
         send(Player[i].player_fd,game_start_message,strlen(game_start_message),0);
     }
@@ -265,7 +264,10 @@ int main(){
     	}
     	
     	sprintf(bc_msg,"%s has asked %s for card %d-%d",Player[turnOf].username,playerAsked,askedCard.cardVal,askedCard.cardSuite);
+    	bc_msg[strlen(bc_msg)]='\0';
     	action = 2;
+    	
+    	printf("Before sending broadcast\n");
     	
     	for(int i=0;i<8;i++){
     		if(i==turnOf)
@@ -276,13 +278,18 @@ int main(){
     		send(Player[i].player_fd,&bc_msg,sizeof(bc_msg),0);
     	}
     	
+    	printf("Before identigying playerAsked\n");
+    	
     	int i;
     	for(i=0;i<8;i++){
     		if(strcmp(playerAsked,Player[i].username)==0)
     			break;
     	}												// i gives position of 'playerasked' in array
     	
+    	printf("Before hit and miss\n");
+    	
     	if(searchCard(Player[i].hand,askedCard)==0){	//miss
+    		printf("inside miss loop\n");
     		turnOf = i;
     		for(int i=0;i<8;i++){
     			send(Player[i].player_fd,&action,sizeof(action),0);
@@ -291,6 +298,7 @@ int main(){
     		}
     	}
     	else{ 											//hit
+    		printf("inside hit loop\n");
     		Player[i].hand = removeCard(Player[i].hand,askedCard);
     		Player[turnOf].hand = addCard(Player[turnOf].hand,askedCard);
     		Player[turnOf].player_score++;
