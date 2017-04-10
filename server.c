@@ -152,32 +152,40 @@ int main(){
     //Player structure Initialisation
     struct player Player[8];
     struct team A,B;
+    A.num_of_players = 0;
+    B.num_of_players = 0;
     char buffer[1024];
-    int buflen,countA,countB;
+    int buflen;
     
     while(numOfClientConnected < 8){
         //Client structure Initialisation
         unsigned int clilen = sizeof(struct sockaddr_in);
         struct   sockaddr_in client;
+        
         Player[numOfClientConnected].player_fd = accept(socket_fd,(struct sockaddr*)&client,&clilen);
+        
         send(Player[numOfClientConnected].player_fd,client_connected_message,strlen(client_connected_message),0);
         
-        buflen=recv(Player[numOfClientConnected].player_fd,buffer,sizeof(buffer),0);	//recv username and team and store info
+        buflen = recv(Player[numOfClientConnected].player_fd,buffer,sizeof(buffer),0);	//recv username and team and store info
         buffer[buflen] = '\0';
+        
         strncpy(Player[numOfClientConnected].username,buffer,buflen-2);
         Player[numOfClientConnected].username[buflen-2]='\0';
         printf("username=%s\n",Player[numOfClientConnected].username);
         Player[numOfClientConnected].team = buffer[buflen-1];
+        
         memset(buffer,'\0',sizeof(buffer));
         
         Player[numOfClientConnected].player_score = 0;					//initialize
         Player[numOfClientConnected].num_of_cards = 0;
         Player[numOfClientConnected].hand = NULL;
         
-        if(Player[numOfClientConnected].team == 'A')						//add player to team
-        	A.arr[countA]==&Player[numOfClientConnected];
+        if(Player[numOfClientConnected].team == 'A'){						//add player to team
+        	A.arr[A.num_of_players++]==&Player[numOfClientConnected];
+            
+        }
         else
-        	B.arr[countB]==&Player[numOfClientConnected];
+        	B.arr[B.num_of_players++]==&Player[numOfClientConnected];
         
         printf("before wait msg\n");
         send(Player[numOfClientConnected].player_fd,wait_msg,strlen(wait_msg),0);
@@ -191,19 +199,19 @@ int main(){
         send(Player[i].player_fd,game_start_message,strlen(game_start_message),0);
     }
     
-    for(int i=1;i<53;i++){				//initial distribution of cards
-    	if(i>24&&i<29)
+    for(int i = 1;i < 53;i++){				//initial distribution of cards
+    	if(i > 24 && i < 29)
     		continue;
        	struct card c;
     	c.num = i;
-    	c.cardSuite = i%4;
-    	if(c.cardSuite==0)
+    	c.cardSuite = i % 4;
+    	if(c.cardSuite == 0)
     		c.cardSuite = 4;
-    	c.cardVal = ((c.num-c.cardSuite)/4)+1;
+    	c.cardVal = ((c.num - c.cardSuite)/4) + 1;
     	    	
-    	int j = (rand())%8;
-    	while(Player[j].num_of_cards==6)
-    		j = (rand())%8;
+    	int j = (rand()) % 8;
+    	while(Player[j].num_of_cards == 6)
+    		j = (rand()) % 8;
     	printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
     	
     	Player[j].hand = addCard(Player[j].hand,c);
