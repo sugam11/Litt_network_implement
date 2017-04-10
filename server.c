@@ -122,13 +122,13 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12576;
+	int portnum = 12577;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
+    serv_addr.sin_addr.s_addr = inet_addr("172.17.46.63");;
     serv_addr.sin_port = htons(portnum);
 	
 	
@@ -165,13 +165,17 @@ int main(){
         Player[numOfClientConnected].player_fd = accept(socket_fd,(struct sockaddr*)&client,&clilen);
         
         send(Player[numOfClientConnected].player_fd,client_connected_message,strlen(client_connected_message),0);
+        printf("Client connected with IP : \n");
         
         buflen = recv(Player[numOfClientConnected].player_fd,buffer,sizeof(buffer),0);	//recv username and team and store info
         buffer[buflen] = '\0';
         
+        printf("%s\n",buffer);
+        
         strncpy(Player[numOfClientConnected].username,buffer,buflen-2);
         Player[numOfClientConnected].username[buflen-2]='\0';
-        printf("username=%s\n",Player[numOfClientConnected].username);
+        
+        printf("username is : %s\n",Player[numOfClientConnected].username);
         Player[numOfClientConnected].team = buffer[buflen-1];
         
         memset(buffer,'\0',sizeof(buffer));
@@ -181,11 +185,11 @@ int main(){
         Player[numOfClientConnected].hand = NULL;
         
         if(Player[numOfClientConnected].team == 'A'){						//add player to team
-        	A.arr[A.num_of_players++]==&Player[numOfClientConnected];
+        	A.arr[A.num_of_players++] = &Player[numOfClientConnected];
             
         }
         else
-        	B.arr[B.num_of_players++]==&Player[numOfClientConnected];
+        	B.arr[B.num_of_players++] = &Player[numOfClientConnected];
         
         printf("before wait msg\n");
         send(Player[numOfClientConnected].player_fd,wait_msg,strlen(wait_msg),0);
