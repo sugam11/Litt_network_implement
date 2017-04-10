@@ -47,6 +47,16 @@ struct team{
 		struct player *arr[];
 };
 
+void printCards(struct node *n){
+
+	printf("-----Printing Cards------\n");
+	while(n!=NULL){
+		printf("num = %d,suite = %u, val = %u\n",n->c.num,n->c.cardSuite,n->c.cardVal);
+		n = n->next;
+	}
+	printf("-----All Cards Printed------\n");
+}
+
 struct node *searchCard(struct node *head,struct card req){
 	struct node* current = head;
 	//struct node* parent;  // Initialize current
@@ -61,19 +71,22 @@ struct node *searchCard(struct node *head,struct card req){
 struct node *addCard(struct node *head,struct card req){
 	struct node *new;
 	new = (struct node *)malloc(sizeof(struct node));
+	new->c.num = req.num;
 	new->c.cardVal = req.cardVal;
 	new->c.cardSuite = req.cardSuite;
 	new->next = NULL;
 	
-	if(head==NULL)
+	if(head==NULL){
+		printf("head was null\n");
 		head = new;
+	}
 	else{
 		struct node* current = head;
 		while(current->next!=NULL)
 			current = current->next;
 		current->next = new;
 	}
-	
+	printCards(head);
 	return head;
 }
 
@@ -109,7 +122,7 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12571;
+	int portnum = 12576;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
@@ -152,12 +165,14 @@ int main(){
         buflen=recv(Player[numOfClientConnected].player_fd,buffer,sizeof(buffer),0);	//recv username and team and store info
         buffer[buflen] = '\0';
         strncpy(Player[numOfClientConnected].username,buffer,buflen-2);
+        Player[numOfClientConnected].username[buflen-2]='\0';
         printf("username=%s\n",Player[numOfClientConnected].username);
         Player[numOfClientConnected].team = buffer[buflen-1];
         memset(buffer,'\0',sizeof(buffer));
         
         Player[numOfClientConnected].player_score = 0;					//initialize
         Player[numOfClientConnected].num_of_cards = 0;
+        Player[numOfClientConnected].hand = NULL;
         
         if(Player[numOfClientConnected].team == 'A')						//add player to team
         	A.arr[countA]==&Player[numOfClientConnected];
@@ -183,15 +198,16 @@ int main(){
     	c.num = i;
     	c.cardSuite = i%4;
     	if(c.cardSuite==0)
-    		c.cardSuite == 4;
+    		c.cardSuite = 4;
     	c.cardVal = ((c.num-c.cardSuite)/4)+1;
-    	printf("%d,%u,%u",c.num,c.cardSuite,c.cardVal);
-    	
+    	    	
     	int j = (rand())%8;
-    	while(Player[j].num_of_cards==12)
+    	while(Player[j].num_of_cards==6)
     		j = (rand())%8;
+    	printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
     	
-    	addCard(Player[j].hand,c);
+    	Player[j].hand = addCard(Player[j].hand,c);
+    	Player[j].num_of_cards++;
     }
     
     
