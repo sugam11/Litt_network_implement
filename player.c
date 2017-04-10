@@ -33,8 +33,8 @@ int main(){
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
   
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12577);
-  serverAddr.sin_addr.s_addr = inet_addr("172.17.46.52");
+  serverAddr.sin_port = htons(12559);
+  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
   addr_size = sizeof serverAddr;
@@ -60,6 +60,11 @@ int main(){
   printf("%s\n",buffer);			//game start msg
   memset(buffer, '\0', sizeof(buffer));
   
+  recvlen=recv(clientSocket, buffer, 1024, 0);
+  buffer[recvlen] = '\0';
+  printf("%s\n",buffer);			//INITIAL hand
+  memset(buffer, '\0', sizeof(buffer));
+  
   while(1){
   	recv(clientSocket, &action, 1024, 0);
   	switch (action){
@@ -73,7 +78,7 @@ int main(){
   		printf("claim LITT?\nRespond with 'y' or 'n'.");
   		scanf("%c",&c);
   		send(clientSocket, &c, sizeof(c), 0);
-  		if(c!='Y'&&c!='y'){
+  		if(c!='Y'&&c!='y'){											//litt not claimed
   			printf("Name the player followed by card\n");
   			scanf("%s",playerName);
   			send(clientSocket, playerName, strlen(playerName), 0);
@@ -82,7 +87,7 @@ int main(){
   			send(clientSocket, &reqCard.cardSuite, sizeof(reqCard.cardSuite), 0);
   		}
   		else{
-  			while(c=='Y'||c=='y'){
+  			while(c=='Y'||c=='y'){									//litt claimed
   				printf("Name the player followed by card\n");
   				scanf("%s",playerName);
   				send(clientSocket, playerName, strlen(playerName), 0);
@@ -97,7 +102,12 @@ int main(){
   		case 2:
   		recvlen=recv(clientSocket, buffer, 1024, 0);
   		buffer[recvlen] = '\0';
-  		printf("%s\n",buffer);			//broadCast msg
+  		printf("%s\n",buffer);			//cards in players hand/last move msg
+  		memset(buffer, '\0', sizeof(buffer));
+  		
+  		recvlen=recv(clientSocket, buffer, 1024, 0);
+  		buffer[recvlen] = '\0';
+  		printf("%s\n",buffer);			//broadCast msg/ hit miss msg
   		memset(buffer, '\0', sizeof(buffer));
   		break;
   	}

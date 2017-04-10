@@ -47,6 +47,8 @@ struct team{
 		struct player *arr[];
 };
 
+struct player Player[8];
+
 void printCards(struct node *n){
 
 	printf("-----Printing Cards------\n");
@@ -57,15 +59,15 @@ void printCards(struct node *n){
 	printf("-----All Cards Printed------\n");
 }
 
-struct node *searchCard(struct node *head,struct card req){
+int searchCard(struct node *head,struct card req){
 	struct node* current = head;
 	//struct node* parent;  // Initialize current
     while (current != NULL){
         if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite)
-            return current;
+            return 1;
         current = current->next;
     }
-    return NULL;
+    return 0;
 }
 
 struct node *addCard(struct node *head,struct card req){
@@ -106,6 +108,21 @@ struct node *removeCard(struct node *head,struct card req){
     return head;
 }
 
+void displayHand(int i){
+	char listOfCards[1024];
+	listOfCards[0]=':';
+	listOfCards[1]='\0';
+	struct node *current = Player[i].hand;
+	char oneCard[8];
+	while(current!=NULL){
+		sprintf(oneCard,"%d-%d,",current->c.cardVal,current->c.cardSuite);
+		strcat(listOfCards,oneCard);
+		current = current->next;
+	}
+	printf("hand=%s\n",listOfCards);
+	send(Player[i].player_fd,listOfCards,strlen(listOfCards),0);
+}
+
 int main(){
 	
    //Fixed Strings for communication
@@ -122,13 +139,13 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12577;
+	int portnum = 12559;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("172.17.46.63");;
+    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
     serv_addr.sin_port = htons(portnum);
 	
 	
@@ -150,7 +167,6 @@ int main(){
     
     
     //Player structure Initialisation
-    struct player Player[8];
     struct team A,B;
     A.num_of_players = 0;
     B.num_of_players = 0;
@@ -170,7 +186,7 @@ int main(){
         buflen = recv(Player[numOfClientConnected].player_fd,buffer,sizeof(buffer),0);	//recv username and team and store info
         buffer[buflen] = '\0';
         
-        printf("%s\n",buffer);
+       // printf("%s\n",buffer);
         
         strncpy(Player[numOfClientConnected].username,buffer,buflen-2);
         Player[numOfClientConnected].username[buflen-2]='\0';
@@ -183,15 +199,14 @@ int main(){
         Player[numOfClientConnected].player_score = 0;					//initialize
         Player[numOfClientConnected].num_of_cards = 0;
         Player[numOfClientConnected].hand = NULL;
+                printf("before wait msg,%d,%d\n",A.num_of_players,B.num_of_players);
         
-        if(Player[numOfClientConnected].team == 'A'){						//add player to team
+   /*     if(Player[numOfClientConnected].team == 'A')					//add player to team
         	A.arr[A.num_of_players++] = &Player[numOfClientConnected];
-            
-        }
-        else
-        	B.arr[B.num_of_players++] = &Player[numOfClientConnected];
+        else if(Player[numOfClientConnected].team == 'B')
+        	B.arr[B.num_of_players++] = &Player[numOfClientConnected];*/
         
-        printf("before wait msg\n");
+        printf("before wait msg,%d,%d\n",A.num_of_players,B.num_of_players);
         send(Player[numOfClientConnected].player_fd,wait_msg,strlen(wait_msg),0);
         
         numOfClientConnected++;
@@ -220,6 +235,72 @@ int main(){
     	
     	Player[j].hand = addCard(Player[j].hand,c);
     	Player[j].num_of_cards++;
+    }
+    
+    for(int i=0;i<8;i++)
+    	displayHand(i);
+    	
+    int turnOf = (rand()) % 8;
+    printf("%d",turnOf);
+    int action,claiming;
+    char playerAsked[32],bc_msg[32];
+    char lastmove[32] = "The last move was a ";
+    char hit[8] = "HIT\n";
+    char miss[8] = "MISS\n";
+    struct card askedCard;
+    
+    while(1){
+    	action = 1;
+    	send(Player[turnOf].player_fd,&action,sizeof(action),0);
+    	displayHand(turnOf);
+    	recv(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
+    	printf("%c\n",claiming);
+    	if(claiming == 'y'||claiming=='Y')
+    		printf("Player claiming litt\n"); 					 //write litt() fxn here
+    	else{													//litt not claimed
+    		buflen = recv(Player[turnOf].player_fd,&playerAsked,sizeof(playerAsked),0);
+    		playerAsked[buflen] = '\0';
+    		recv(Player[turnOf].player_fd,&askedCard.cardVal,sizeof(askedCard.cardVal),0);
+    		recv(Player[turnOf].player_fd,&askedCard.cardSuite,sizeof(askedCard.cardSuite),0);
+    	}
+    	
+    	sprintf(bc_msg,"%s has asked %s for card %d-%d",Player[turnOf].username,playerAsked,askedCard.cardVal,askedCard.cardSuite);
+    	action = 2;
+    	
+    	for(int i=0;i<8;i++){
+    		if(i==turnOf)
+    			continue;
+    			
+    		send(Player[i].player_fd,&action,sizeof(action),0);
+    		displayHand(i);
+    		send(Player[i].player_fd,&bc_msg,sizeof(bc_msg),0);
+    	}
+    	
+    	int i;
+    	for(i=0;i<8;i++){
+    		if(strcmp(playerAsked,Player[i].username)==0)
+    			break;
+    	}												// i gives position of 'playerasked' in array
+    	
+    	if(searchCard(Player[i].hand,askedCard)==0){	//miss
+    		turnOf = i;
+    		for(int i=0;i<8;i++){
+    			send(Player[i].player_fd,&action,sizeof(action),0);
+    			send(Player[i].player_fd,&lastmove,sizeof(lastmove),0);
+    			send(Player[i].player_fd,&miss,sizeof(miss),0);
+    		}
+    	}
+    	else{ 											//hit
+    		Player[i].hand = removeCard(Player[i].hand,askedCard);
+    		Player[turnOf].hand = addCard(Player[turnOf].hand,askedCard);
+    		Player[turnOf].player_score++;
+    		
+    		for(int i=0;i<8;i++){
+    			send(Player[i].player_fd,&action,sizeof(action),0);
+    			send(Player[i].player_fd,&lastmove,sizeof(lastmove),0);
+    			send(Player[i].player_fd,&hit,sizeof(hit),0);
+    		}
+    	}
     }
     
     
