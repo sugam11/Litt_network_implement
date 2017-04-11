@@ -48,6 +48,7 @@ struct team{
 };
 
 struct player Player[8];
+char str[1024];
 
 void printCards(struct node *n){
 
@@ -108,24 +109,25 @@ struct node *removeCard(struct node *head,struct card req){
     return head;
 }
 
-void displayHand(int i, char *str){
-
+void displayHand(int i){
+	
+	memset(str,'\0',sizeof(str));
 	int len,total=0;
-	char listOfCards[1024];
-	listOfCards[0]=':';
-	listOfCards[1]='\0';
+	char str[1024];
+	str[0]=':';
+	str[1]='\0';
 	struct node *current = Player[i].hand;
 	char oneCard[8];
 	while(current!=NULL){
 		len = sprintf(oneCard,"%d-%d,",current->c.cardVal,current->c.cardSuite);
 		total+=len;
-		strcat(listOfCards,oneCard);
+		strcat(str,oneCard);
 		current = current->next;
 	}
 	printf("total=%d\n",total);
-	listOfCards[total] = '\n';
-	listOfCards[total+1] = '\0';
-	//send(Player[i].player_fd,listOfCards,strlen(listOfCards),0);
+	str[total] = '\n';
+	str[total+1] = '\0';
+	//send(Player[i].player_fd,str,strlen(str),0);
 }
 
 int main(){
@@ -145,7 +147,7 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12621;
+	int portnum = 12625;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
@@ -230,16 +232,16 @@ int main(){
     	Player[j].num_of_cards++;
     }
     
-    char *str;
+    //char *str;
     
     for(int i = 0;i < 8;i++){
     	
-    	displayHand(i,str);
+    	displayHand(i);
     	
-    	if(Player[i].team == 'A')
+    	/*if(Player[i].team == 'A')
     		A.arr[A.num_of_players++] = &Player[i];
         else if(Player[i].team == 'B')
-        	B.arr[B.num_of_players++] = &Player[i];
+        	B.arr[B.num_of_players++] = &Player[i];*/
         
         strcat(game_start_message,str);	
         send(Player[i].player_fd,game_start_message,strlen(game_start_message),0);		//game start msg + initial hand
@@ -261,7 +263,7 @@ int main(){
     
     	printf("turnOf=%d\n",turnOf);
     	action = 1;
-    	displayHand(turnOf,str);
+    	displayHand(turnOf);
     	sprintf(buffer,"%d,%s",action,str);
     	send(Player[turnOf].player_fd,buffer,sizeof(buffer),0);
     	memset(buffer, '\0', sizeof(buffer));
@@ -289,7 +291,7 @@ int main(){
     		if(i==turnOf)
     			continue;
     			
-    		displayHand(i,str);
+    		displayHand(i);
     		sprintf(buffer,"%d,%s,%s",action,str,bc_msg);
     		send(Player[i].player_fd,buffer,strlen(buffer),0);
     		memset(buffer, '\0', sizeof(buffer));
