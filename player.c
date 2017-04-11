@@ -33,8 +33,8 @@ int main(){
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
   
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12625);
-  serverAddr.sin_addr.s_addr = inet_addr("172.17.46.52");
+  serverAddr.sin_port = htons(12626);
+  serverAddr.sin_addr.s_addr = inet_addr("172.17.46.63");
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
   addr_size = sizeof serverAddr;

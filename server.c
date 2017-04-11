@@ -48,6 +48,7 @@ struct team{
 };
 
 struct player Player[8];
+
 char str[1024];
 
 void printCards(struct node *n){
@@ -113,20 +114,21 @@ void displayHand(int i){
 	
 	memset(str,'\0',sizeof(str));
 	int len,total=0;
-	char str[1024];
+	//char str[1024];
 	str[0]=':';
 	str[1]='\0';
 	struct node *current = Player[i].hand;
 	char oneCard[8];
 	while(current!=NULL){
 		len = sprintf(oneCard,"%d-%d,",current->c.cardVal,current->c.cardSuite);
-		total+=len;
+		total += len;
 		strcat(str,oneCard);
 		current = current->next;
 	}
-	printf("total=%d\n",total);
+	printf("total = %d\n",total);
 	str[total] = '\n';
 	str[total+1] = '\0';
+    printf("%s\n",str);
 	//send(Player[i].player_fd,str,strlen(str),0);
 }
 
@@ -147,13 +149,13 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12625;
+	int portnum = 12626;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("172.17.46.52");;
+    serv_addr.sin_addr.s_addr = inet_addr("172.17.46.63");;
     serv_addr.sin_port = htons(portnum);
 	
 	
@@ -226,7 +228,7 @@ int main(){
     	int j = (rand()) % 8;
     	while(Player[j].num_of_cards == 6)
     		j = (rand()) % 8;
-    	//printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
+            printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
     	
     	Player[j].hand = addCard(Player[j].hand,c);
     	Player[j].num_of_cards++;
