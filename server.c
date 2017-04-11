@@ -79,7 +79,7 @@ struct node *addCard(struct node *head,struct card req){
 	new->next = NULL;
 	
 	if(head==NULL){
-		printf("head was null\n");
+		//printf("head was null\n");
 		head = new;
 	}
 	else{
@@ -108,28 +108,33 @@ struct node *removeCard(struct node *head,struct card req){
     return head;
 }
 
-void displayHand(int i){
+void displayHand(int i, char *str){
+
+	int len,total=0;
 	char listOfCards[1024];
 	listOfCards[0]=':';
 	listOfCards[1]='\0';
 	struct node *current = Player[i].hand;
 	char oneCard[8];
 	while(current!=NULL){
-		sprintf(oneCard,"%d-%d,",current->c.cardVal,current->c.cardSuite);
+		len = sprintf(oneCard,"%d-%d,",current->c.cardVal,current->c.cardSuite);
+		total+=len;
 		strcat(listOfCards,oneCard);
 		current = current->next;
 	}
-	//printf("hand=%s\n",listOfCards);
-	send(Player[i].player_fd,listOfCards,strlen(listOfCards),0);
+	printf("total=%d\n",total);
+	listOfCards[total] = '\n';
+	listOfCards[total+1] = '\0';
+	//send(Player[i].player_fd,listOfCards,strlen(listOfCards),0);
 }
 
 int main(){
 	
 	srand(time(0));
    //Fixed Strings for communication
-    char client_connected_message[] = "Welcome to LITT!!\nEnter UserName,team A or B";
-    char game_start_message[] = "Game is Starting\nDealing cards to each player";
-    char wait_msg[] = "Waiting for other players to connect...";
+    char client_connected_message[64] = "Welcome to LITT!!\nEnter UserName,team A or B\n";
+    char game_start_message[64] = "Game is Starting.\nDealing cards to each player...\n";
+    char wait_msg[64] = "Waiting for other players to connect...\n";
     
     
 //Server Variables
@@ -140,13 +145,13 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12565;
+	int portnum = 12621;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
+    serv_addr.sin_addr.s_addr = inet_addr("172.17.46.52");;
     serv_addr.sin_port = htons(portnum);
 	
 	
@@ -181,7 +186,7 @@ int main(){
         
         Player[numOfClientConnected].player_fd = accept(socket_fd,(struct sockaddr*)&client,&clilen);
         
-        send(Player[numOfClientConnected].player_fd,client_connected_message,strlen(client_connected_message),0);
+        send(Player[numOfClientConnected].player_fd,client_connected_message,strlen(client_connected_message),0);					//asking name,team
         printf("Client connected with IP : \n");
         
         buflen = recv(Player[numOfClientConnected].player_fd,buffer,sizeof(buffer),0);	//recv username and team and store info
@@ -200,23 +205,12 @@ int main(){
         Player[numOfClientConnected].player_score = 0;					//initialize
         Player[numOfClientConnected].num_of_cards = 0;
         Player[numOfClientConnected].hand = NULL;
-                printf("before wait msg,%d,%d\n",A.num_of_players,B.num_of_players);
-        
-   /*     if(Player[numOfClientConnected].team == 'A')					//add player to team
-        	A.arr[A.num_of_players++] = &Player[numOfClientConnected];
-        else if(Player[numOfClientConnected].team == 'B')
-        	B.arr[B.num_of_players++] = &Player[numOfClientConnected];*/
-        
-        printf("before wait msg,%d,%d\n",A.num_of_players,B.num_of_players);
-        send(Player[numOfClientConnected].player_fd,wait_msg,strlen(wait_msg),0);
+
+        send(Player[numOfClientConnected].player_fd,wait_msg,strlen(wait_msg),0);			//sending wait msg
         
         numOfClientConnected++;
     }
-      
-    for(int i = 0;i < 8;i++){
-        send(Player[i].player_fd,game_start_message,strlen(game_start_message),0);
-    }
-    
+         
     for(int i = 1;i < 53;i++){				//initial distribution of cards
     	if(i > 24 && i < 29)
     		continue;
@@ -230,17 +224,29 @@ int main(){
     	int j = (rand()) % 8;
     	while(Player[j].num_of_cards == 6)
     		j = (rand()) % 8;
-    	printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
+    	//printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
     	
     	Player[j].hand = addCard(Player[j].hand,c);
     	Player[j].num_of_cards++;
     }
     
-    for(int i=0;i<8;i++)
-    	displayHand(i);
+    char *str;
+    
+    for(int i = 0;i < 8;i++){
+    	
+    	displayHand(i,str);
+    	
+    	if(Player[i].team == 'A')
+    		A.arr[A.num_of_players++] = &Player[i];
+        else if(Player[i].team == 'B')
+        	B.arr[B.num_of_players++] = &Player[i];
+        
+        strcat(game_start_message,str);	
+        send(Player[i].player_fd,game_start_message,strlen(game_start_message),0);		//game start msg + initial hand
+        //free(str);
+    }
     	
     int turnOf = (rand()) % 8;
-    printf("%d",turnOf);
     int action,claiming;
     char playerAsked[32],bc_msg[32];
     char lastmove[32] = "The last move was a ";
@@ -249,18 +255,28 @@ int main(){
     struct card askedCard;
     
     while(1){
+    
+    	memset(playerAsked, '\0', sizeof(playerAsked));
+    	memset(bc_msg, '\0', sizeof(bc_msg));
+    
+    	printf("turnOf=%d\n",turnOf);
     	action = 1;
-    	send(Player[turnOf].player_fd,&action,sizeof(action),0);
-    	displayHand(turnOf);
+    	displayHand(turnOf,str);
+    	sprintf(buffer,"%d,%s",action,str);
+    	send(Player[turnOf].player_fd,buffer,sizeof(buffer),0);
+    	memset(buffer, '\0', sizeof(buffer));
+    	
     	recv(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
-    	printf("%c\n",claiming);
+    	printf("claiming=%c\n",claiming);
+    	
     	if(claiming == 'y'||claiming=='Y')
     		printf("Player claiming litt\n"); 					 //write litt() fxn here
+    	
     	else{													//litt not claimed
-    		buflen = recv(Player[turnOf].player_fd,&playerAsked,sizeof(playerAsked),0);
-    		playerAsked[buflen] = '\0';
-    		recv(Player[turnOf].player_fd,&askedCard.cardVal,sizeof(askedCard.cardVal),0);
-    		recv(Player[turnOf].player_fd,&askedCard.cardSuite,sizeof(askedCard.cardSuite),0);
+    		buflen = recv(Player[turnOf].player_fd,&buffer,sizeof(buffer),0);
+    		buffer[buflen] = '\0';
+    		sscanf(buffer,"%s,%u,%u",playerAsked,&askedCard.cardVal,&askedCard.cardSuite);
+    		memset(buffer, '\0', sizeof(buffer));
     	}
     	
     	sprintf(bc_msg,"%s has asked %s for card %d-%d",Player[turnOf].username,playerAsked,askedCard.cardVal,askedCard.cardSuite);
@@ -273,12 +289,13 @@ int main(){
     		if(i==turnOf)
     			continue;
     			
-    		send(Player[i].player_fd,&action,sizeof(action),0);
-    		displayHand(i);
-    		send(Player[i].player_fd,&bc_msg,sizeof(bc_msg),0);
+    		displayHand(i,str);
+    		sprintf(buffer,"%d,%s,%s",action,str,bc_msg);
+    		send(Player[i].player_fd,buffer,strlen(buffer),0);
+    		memset(buffer, '\0', sizeof(buffer));
     	}
     	
-    	printf("Before identigying playerAsked\n");
+    	printf("Before identifing playerAsked\n");
     	
     	int i;
     	for(i=0;i<8;i++){
@@ -292,9 +309,9 @@ int main(){
     		printf("inside miss loop\n");
     		turnOf = i;
     		for(int i=0;i<8;i++){
-    			send(Player[i].player_fd,&action,sizeof(action),0);
-    			send(Player[i].player_fd,&lastmove,sizeof(lastmove),0);
-    			send(Player[i].player_fd,&miss,sizeof(miss),0);
+    			sprintf(buffer,"%d,%s,%s",action,lastmove,miss);
+    			send(Player[i].player_fd,buffer,strlen(buffer),0);
+				memset(buffer, '\0', sizeof(buffer));
     		}
     	}
     	else{ 											//hit
@@ -304,9 +321,10 @@ int main(){
     		Player[turnOf].player_score++;
     		
     		for(int i=0;i<8;i++){
-    			send(Player[i].player_fd,&action,sizeof(action),0);
-    			send(Player[i].player_fd,&lastmove,sizeof(lastmove),0);
-    			send(Player[i].player_fd,&hit,sizeof(hit),0);
+    			printf("inside hit for loop\n");
+    			sprintf(buffer,"%d,%s,%s",action,lastmove,hit);
+    			send(Player[i].player_fd,buffer,strlen(buffer),0);
+				memset(buffer, '\0', sizeof(buffer));
     		}
     	}
     }

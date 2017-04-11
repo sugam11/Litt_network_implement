@@ -33,83 +33,84 @@ int main(){
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
   
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12565);
-  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  serverAddr.sin_port = htons(12621);
+  serverAddr.sin_addr.s_addr = inet_addr("172.17.46.52");
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
   addr_size = sizeof serverAddr;
   
   connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size);
 
-  recvlen=recv(clientSocket, buffer, 1024, 0);
+  recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
-  printf("%s\n",buffer); 			//ask name,team
+  printf("ask name,team=%s\n",buffer); 			//ask name,team
   memset(buffer, '\0', sizeof(buffer));
+  fflush(stdout);
   
   scanf("%s",buffer);
   send(clientSocket, buffer, strlen(buffer), 0);
   memset(buffer, '\0', sizeof(buffer));
 
-  recvlen=recv(clientSocket, buffer, 1024, 0);
+  recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
-  printf("%s\n",buffer);			//wait msg
+  printf("wait msg=%s\n",buffer);			//wait msg
   memset(buffer, '\0', sizeof(buffer));
+  fflush(stdout);
   
-  recvlen=recv(clientSocket, buffer, 1024, 0);
+  recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
-  printf("%s\n",buffer);			//game start msg
+  printf("game start msg=%s\n",buffer);			//game start msg + initial hand
   memset(buffer, '\0', sizeof(buffer));
+  fflush(stdout);
   
-  recvlen=recv(clientSocket, buffer, 1024, 0);
+  /*recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
-  printf("%s\n",buffer);			//INITIAL hand
+  printf("cards dealt -> %s,%d\n",buffer,recvlen);			//INITIAL hand
   memset(buffer, '\0', sizeof(buffer));
-  
+  fflush(stdout);*/
+  char msg[1024];
   while(1){
-  	recv(clientSocket, &action, 1024, 0);
-  	printf("action = %d\n",action);
+  	printf("While loop entered\n");fflush(stdout);
+  	recvlen = recv(clientSocket, &buffer, sizeof(buffer), 0);
+  	buffer[recvlen] = '\0';
+  	sscanf(buffer,"%d,%s",&action,msg);
+  	memset(buffer, '\0', sizeof(buffer));
+  	
   	switch (action){
   		case 1:
   		printf("case 1 entered\n");
   		printf("Your Turn\n");
-  		recvlen=recv(clientSocket, buffer, 1024, 0);
-  		buffer[recvlen] = '\0';
-  		printf("%s\n",buffer);			//cards in players hand
-  		memset(buffer, '\0', sizeof(buffer));
+  		//recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
+  		//buffer[recvlen] = '\0';
+  		printf("cards in players hand=%s\n",msg);fflush(stdout);			//cards in players hand
+  		fflush(stdout);
   		
-  		printf("claim LITT?\nRespond with 'y' or 'n'.");
+  		printf("claim LITT?\nRespond with 'y' or 'n'.\n");
   		scanf(" %c",&c);
   		send(clientSocket, &c, sizeof(c), 0);
   		if(c!='Y'&&c!='y'){											//litt not claimed
-  			printf("Name the player followed by card\n");
-  			scanf("%s",playerName);
-  			send(clientSocket, playerName, strlen(playerName), 0);
-  			scanf("%u,%u",&reqCard.cardVal,&reqCard.cardSuite);
-  			send(clientSocket, &reqCard.cardVal, sizeof(reqCard.cardVal), 0);
-  			send(clientSocket, &reqCard.cardSuite, sizeof(reqCard.cardSuite), 0);
+  			printf("Name the player followed by card as playerName, Card Value, Card Suite\n");fflush(stdout);
+  			scanf("%s,%u,%u",playerName,&reqCard.cardVal,&reqCard.cardSuite);
+  			sprintf(buffer,"%s,%d,%d",playerName,reqCard.cardVal,reqCard.cardSuite);
+  			send(clientSocket, buffer, strlen(buffer), 0);
+  			memset(buffer, '\0', sizeof(buffer));
   		}
   		else{
   			while(c=='Y'||c=='y'){									//litt claimed
-  				printf("Name the player followed by card\n");
-  				scanf("%s",playerName);
-  				send(clientSocket, playerName, strlen(playerName), 0);
-  				scanf("%u,%u",&reqCard.cardVal,&reqCard.cardSuite);
-  				send(clientSocket, &reqCard.cardVal, sizeof(reqCard.cardVal), 0);
-  				send(clientSocket, &reqCard.cardSuite, sizeof(reqCard.cardSuite), 0);
+  				printf("Name the player followed by card as playerName, Card Value, Card Suite\n");fflush(stdout);
+  				scanf("%s,%u,%u",playerName,&reqCard.cardVal,&reqCard.cardSuite);
+  				sprintf(buffer,"%s,%d,%d",playerName,reqCard.cardVal,reqCard.cardSuite);
+  				send(clientSocket, buffer, strlen(buffer), 0);
+  				memset(buffer, '\0', sizeof(buffer));
   				recv(clientSocket, &c, sizeof(c),0);
   			}
   		}
   		break;
   		
   		case 2:
-  		recvlen=recv(clientSocket, buffer, 1024, 0);
-  		buffer[recvlen] = '\0';
-  		printf("%s\n",buffer);			//cards in players hand/last move msg
-  		memset(buffer, '\0', sizeof(buffer));
-  		
-  		recvlen=recv(clientSocket, buffer, 1024, 0);
-  		buffer[recvlen] = '\0';
-  		printf("%s\n",buffer);			//broadCast msg/ hit miss msg
+  		//recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
+  		//buffer[recvlen] = '\0';
+  		printf("cards in players hand/last move msg=%s",msg);fflush(stdout);			//cards in players hand+bc_msg/last move msg
   		memset(buffer, '\0', sizeof(buffer));
   		break;
   	}
