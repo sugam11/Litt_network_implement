@@ -48,7 +48,6 @@ struct team{
 };
 
 struct player Player[8];
-
 char str[1024];
 
 void printCards(struct node *n){
@@ -64,8 +63,10 @@ void printCards(struct node *n){
 int searchCard(struct node *head,struct card req){
 	struct node* current = head;
 	//struct node* parent;  // Initialize current
+	printf("searching card\n");
     while (current != NULL){
         if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite)
+        //if(current->c.cardVal == 0 && current->c.cardSuite == 0)
             return 1;
         current = current->next;
     }
@@ -99,6 +100,7 @@ struct node *removeCard(struct node *head,struct card req){
 	struct node* parent;  // Initialize current
     while (current != NULL){
         if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite){
+        //if (current->c.cardVal == 0 && current->c.cardSuite == 0){
         	if(current==head)
         		head = head->next;
         	else
@@ -121,14 +123,14 @@ void displayHand(int i){
 	char oneCard[8];
 	while(current!=NULL){
 		len = sprintf(oneCard,"%d-%d,",current->c.cardVal,current->c.cardSuite);
-		total += len;
+		total+=len;
 		strcat(str,oneCard);
 		current = current->next;
 	}
-	printf("total = %d\n",total);
+	
 	str[total] = '\n';
 	str[total+1] = '\0';
-    printf("%s\n",str);
+	//printf("total=%d\n,displayhand=%s\n",total,str);
 	//send(Player[i].player_fd,str,strlen(str),0);
 }
 
@@ -149,13 +151,13 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12626;
+	int portnum = 12671;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("172.17.46.63");;
+    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
     serv_addr.sin_port = htons(portnum);
 	
 	
@@ -228,13 +230,14 @@ int main(){
     	int j = (rand()) % 8;
     	while(Player[j].num_of_cards == 6)
     		j = (rand()) % 8;
-            printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
+    	//printf("num = %d,suite = %u, val = %u, Player = %d,card num = %d\n",c.num,c.cardSuite,c.cardVal,j,Player[j].num_of_cards+1);
     	
     	Player[j].hand = addCard(Player[j].hand,c);
     	Player[j].num_of_cards++;
     }
     
     //char *str;
+    sleep(2);
     
     for(int i = 0;i < 8;i++){
     	
@@ -244,9 +247,11 @@ int main(){
     		A.arr[A.num_of_players++] = &Player[i];
         else if(Player[i].team == 'B')
         	B.arr[B.num_of_players++] = &Player[i];*/
-        
-        strcat(game_start_message,str);	
-        send(Player[i].player_fd,game_start_message,strlen(game_start_message),0);		//game start msg + initial hand
+        char msgbuf[1024];
+        strcpy(msgbuf,game_start_message);
+        strcat(msgbuf,str);	
+        send(Player[i].player_fd,msgbuf,strlen(msgbuf),0);		//game start msg + initial hand
+        memset(msgbuf,'\0',sizeof(msgbuf));
         //free(str);
     }
     	
@@ -258,8 +263,10 @@ int main(){
     char miss[8] = "MISS\n";
     struct card askedCard;
     
-    while(1){
     
+    
+    while(1){
+    	sleep(2);
     	memset(playerAsked, '\0', sizeof(playerAsked));
     	memset(bc_msg, '\0', sizeof(bc_msg));
     
@@ -273,13 +280,73 @@ int main(){
     	recv(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
     	printf("claiming=%c\n",claiming);
     	
-    	if(claiming == 'y'||claiming=='Y')
-    		printf("Player claiming litt\n"); 					 //write litt() fxn here
+    	if(claiming == 'y'||claiming=='Y'){						//write litt() fxn here
+    		int count=0;
+    		struct card setCards[6];
+    		int playerSlot[6];
+    		
+    		printf("Player claiming litt\n");
+    		while(1){
+    			buflen = recv(Player[turnOf].player_fd,&buffer,sizeof(buffer),0);
+    			buffer[buflen] = '\0';
+    			printf("-----buffer=%s,buflen=%d\n",buffer,buflen);
+    			int l;
+    			for(l=0;l<32;l++){
+    				if(buffer[l]==',')
+    					break;
+    				playerAsked[l] = buffer[l];
+    				printf("playerAsked[l] = %c\n",playerAsked[l]);	
+    			}
+    			char somebuf[10];
+    			strncpy(somebuf,buffer+l+1,6);
+    			sscanf(somebuf,"%u,%u",&askedCard.cardVal,&askedCard.cardSuite);
+    			memset(buffer, '\0', sizeof(buffer));
+    			
+    			int i;
+    			for(i=0;i<8;i++){
+    				if(strcmp(playerAsked,Player[i].username)==0)
+    					break;
+    			}												// i gives position of 'playerasked' in array
+    			printf("PLAYERaSKED = %s,i=%d\n",playerAsked,i);
+    			
+    			if(searchCard(Player[i].hand,askedCard)==0){	
+    				printf("litt claim rejected\n");
+    				claiming = 'n';
+    				send(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
+    				break;
+    			}
+    			else{
+    				printf("card found\n");
+    				playerSlot[count] = i;
+    				claiming = 'y';
+    				setCards[count].cardVal = askedCard.cardVal;
+    				setCards[count].cardSuite = askedCard.cardSuite;
+    				send(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
+    				count++;
+    				if(count==6){
+    					printf("litt claim accepted\n");
+    					for(int a=0;a<6;a++)
+    						removeCard(Player[playerSlot[a]].hand,setCards[a]);
+    					break;
+    				}
+    					
+    			}
+    			memset(playerAsked,'\0',sizeof(playerAsked));
+    		}
+    	} 					 
     	
     	else{													//litt not claimed
     		buflen = recv(Player[turnOf].player_fd,&buffer,sizeof(buffer),0);
     		buffer[buflen] = '\0';
-    		sscanf(buffer,"%s,%u,%u",playerAsked,&askedCard.cardVal,&askedCard.cardSuite);
+    		int l;
+    		for(l=0;l<32;l++){
+    			if(buffer[l]==',')
+    				break;
+    			playerAsked[l] = buffer[l];	
+    		}
+    		char somebuf[10];
+    		strncpy(somebuf,buffer+l+1,6);
+    		sscanf(somebuf,"%u,%u",&askedCard.cardVal,&askedCard.cardSuite);
     		memset(buffer, '\0', sizeof(buffer));
     	}
     	
@@ -295,6 +362,7 @@ int main(){
     			
     		displayHand(i);
     		sprintf(buffer,"%d,%s,%s",action,str,bc_msg);
+    		//printf("buffer=%s\n",buffer);
     		send(Player[i].player_fd,buffer,strlen(buffer),0);
     		memset(buffer, '\0', sizeof(buffer));
     	}
@@ -308,12 +376,13 @@ int main(){
     	}												// i gives position of 'playerasked' in array
     	
     	printf("Before hit and miss\n");
+    	printf("askedCard = %u,%u\n",askedCard.cardVal,askedCard.cardSuite);
     	
     	if(searchCard(Player[i].hand,askedCard)==0){	//miss
     		printf("inside miss loop\n");
     		turnOf = i;
     		for(int i=0;i<8;i++){
-    			sprintf(buffer,"%d,%s,%s",action,lastmove,miss);
+    			sprintf(buffer,"%d,%s%s",action,lastmove,miss);
     			send(Player[i].player_fd,buffer,strlen(buffer),0);
 				memset(buffer, '\0', sizeof(buffer));
     		}
@@ -325,8 +394,8 @@ int main(){
     		Player[turnOf].player_score++;
     		
     		for(int i=0;i<8;i++){
-    			printf("inside hit for loop\n");
-    			sprintf(buffer,"%d,%s,%s",action,lastmove,hit);
+    			//printf("inside hit for loop\n");
+    			sprintf(buffer,"%d,%s%s",action,lastmove,hit);
     			send(Player[i].player_fd,buffer,strlen(buffer),0);
 				memset(buffer, '\0', sizeof(buffer));
     		}

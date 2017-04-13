@@ -33,8 +33,8 @@ int main(){
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
   
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12626);
-  serverAddr.sin_addr.s_addr = inet_addr("172.17.46.63");
+  serverAddr.sin_port = htons(12671);
+  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
   addr_size = sizeof serverAddr;
@@ -43,23 +43,24 @@ int main(){
 
   recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
-  printf("ask name,team=%s\n",buffer); 			//ask name,team
+  printf("%s",buffer); 			//ask name,team
   memset(buffer, '\0', sizeof(buffer));
   fflush(stdout);
   
   scanf("%s",buffer);
+
   send(clientSocket, buffer, strlen(buffer), 0);
   memset(buffer, '\0', sizeof(buffer));
 
   recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
-  printf("wait msg=%s\n",buffer);			//wait msg
+  printf("%s",buffer);			//wait msg
   memset(buffer, '\0', sizeof(buffer));
   fflush(stdout);
   
   recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
-  printf("game start msg=%s\n",buffer);			//game start msg + initial hand
+  printf("%s",buffer);			//game start msg + initial hand
   memset(buffer, '\0', sizeof(buffer));
   fflush(stdout);
   
@@ -68,41 +69,51 @@ int main(){
   printf("cards dealt -> %s,%d\n",buffer,recvlen);			//INITIAL hand
   memset(buffer, '\0', sizeof(buffer));
   fflush(stdout);*/
+  
   char msg[1024];
   while(1){
-  	printf("While loop entered\n");fflush(stdout);
+  	//printf("While loop entered\n");
+  	memset(msg,'\0',sizeof(msg));
   	recvlen = recv(clientSocket, &buffer, sizeof(buffer), 0);
   	buffer[recvlen] = '\0';
-  	sscanf(buffer,"%d,%s",&action,msg);
+  	action = buffer[0] - '0';
+  	strncpy(msg,buffer+2,strlen(buffer)-2);
+  	//printf("received=%s\naction=%d\nmsg=%s\n",buffer,action,msg);
   	memset(buffer, '\0', sizeof(buffer));
   	
   	switch (action){
   		case 1:
-  		printf("case 1 entered\n");
+  		//printf("case 1 entered\n");
   		printf("Your Turn\n");
   		//recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   		//buffer[recvlen] = '\0';
-  		printf("cards in players hand=%s\n",msg);fflush(stdout);			//cards in players hand
-  		fflush(stdout);
+  		printf("%s\n",msg);			//cards in players hand
+  		
   		
   		printf("claim LITT?\nRespond with 'y' or 'n'.\n");
   		scanf(" %c",&c);
   		send(clientSocket, &c, sizeof(c), 0);
   		if(c!='Y'&&c!='y'){											//litt not claimed
-  			printf("Name the player followed by card as playerName, Card Value, Card Suite\n");fflush(stdout);
-  			scanf("%s,%u,%u",playerName,&reqCard.cardVal,&reqCard.cardSuite);
+  			printf("Name the player followed by card as playerName(space)Card Value, Card Suite\n");
+  			scanf("%s %u,%u",playerName,&reqCard.cardVal,&reqCard.cardSuite);
   			sprintf(buffer,"%s,%d,%d",playerName,reqCard.cardVal,reqCard.cardSuite);
   			send(clientSocket, buffer, strlen(buffer), 0);
   			memset(buffer, '\0', sizeof(buffer));
   		}
   		else{
+  			int count=0;
   			while(c=='Y'||c=='y'){									//litt claimed
-  				printf("Name the player followed by card as playerName, Card Value, Card Suite\n");fflush(stdout);
-  				scanf("%s,%u,%u",playerName,&reqCard.cardVal,&reqCard.cardSuite);
-  				sprintf(buffer,"%s,%d,%d",playerName,reqCard.cardVal,reqCard.cardSuite);
+  				count++;
+  				printf("Name the player followed by card as playerName(space)Card Value, Card Suite\n");
+  				scanf("%s %u,%u",playerName,&reqCard.cardVal,&reqCard.cardSuite);
+  				sprintf(buffer,"%s,%u,%u",playerName,reqCard.cardVal,reqCard.cardSuite);
   				send(clientSocket, buffer, strlen(buffer), 0);
   				memset(buffer, '\0', sizeof(buffer));
+  				//memset(playerName, '\0', sizeof(playerName));
   				recv(clientSocket, &c, sizeof(c),0);
+  				printf("  c=%c\n",c);
+  				if(count==6)
+  					break;
   			}
   		}
   		break;
@@ -110,7 +121,7 @@ int main(){
   		case 2:
   		//recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   		//buffer[recvlen] = '\0';
-  		printf("cards in players hand/last move msg=%s",msg);fflush(stdout);			//cards in players hand+bc_msg/last move msg
+  		printf("%s\n",msg);			//cards in players hand+bc_msg/last move msg
   		memset(buffer, '\0', sizeof(buffer));
   		break;
   	}
