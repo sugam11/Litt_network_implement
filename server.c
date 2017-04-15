@@ -151,7 +151,7 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12671;
+	int portnum = 12689;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
@@ -256,7 +256,8 @@ int main(){
     }
     	
     int turnOf = (rand()) % 8;
-    int action,claiming;
+    int action;
+    char claiming;
     char playerAsked[32],bc_msg[32];
     char lastmove[32] = "The last move was a ";
     char hit[8] = "HIT\n";
@@ -299,6 +300,7 @@ int main(){
     			}
     			char somebuf[10];
     			strncpy(somebuf,buffer+l+1,6);
+    			printf("somebuf = %s\n",somebuf);
     			sscanf(somebuf,"%u,%u",&askedCard.cardVal,&askedCard.cardSuite);
     			memset(buffer, '\0', sizeof(buffer));
     			
@@ -333,9 +335,11 @@ int main(){
     			}
     			memset(playerAsked,'\0',sizeof(playerAsked));
     		}
+    		turnOf = (rand())%8;
+    		continue;
     	} 					 
     	
-    	else{													//litt not claimed
+    	else{												//litt not claimed
     		buflen = recv(Player[turnOf].player_fd,&buffer,sizeof(buffer),0);
     		buffer[buflen] = '\0';
     		int l;

@@ -33,7 +33,7 @@ int main(){
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
   
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12671);
+  serverAddr.sin_port = htons(12689);
   serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
@@ -74,11 +74,16 @@ int main(){
   while(1){
   	//printf("While loop entered\n");
   	memset(msg,'\0',sizeof(msg));
-  	recvlen = recv(clientSocket, &buffer, sizeof(buffer), 0);
+  	printf("before recv\n");
+  	if((recvlen = recv(clientSocket, &buffer, sizeof(buffer), 0))<0){
+  	perror("Failed to bind");
+        return -1;
+  	}
+  	printf("after recv,recvlen=%d\n",recvlen);
   	buffer[recvlen] = '\0';
   	action = buffer[0] - '0';
   	strncpy(msg,buffer+2,strlen(buffer)-2);
-  	//printf("received=%s\naction=%d\nmsg=%s\n",buffer,action,msg);
+  	printf("received=%s\naction=%d\nmsg=%s\n",buffer,action,msg);
   	memset(buffer, '\0', sizeof(buffer));
   	
   	switch (action){
