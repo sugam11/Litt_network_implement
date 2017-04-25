@@ -51,7 +51,6 @@ struct team{
 struct player Player[8];
 char str[1024];
 char teams[2];
-int team_score[2];
 
 //returns the player id(i) of the minimum score player in the team.
 int min_team(char team){
@@ -229,7 +228,7 @@ void displayHand(int i){
     }
 
 int main(){
-	team_score[0] = team_score[1] = 0;
+	
 	srand(time(0));
    //Fixed Strings for communication
     char client_connected_message[64] = "Welcome to LITT!!\nEnter UserName,team A or B\n";
@@ -367,7 +366,7 @@ int main(){
     }
     
     //char *str;
-    sleep(2);
+    sleep(1);
     
     for(int i = 0;i < 8;i++){
     	if(Player[i].active == 0)
@@ -400,20 +399,11 @@ int main(){
     
     
     while(1){
-    	sleep(2);
+    	sleep(1);
     	memset(playerAsked, '\0', sizeof(playerAsked));
     	memset(bc_msg, '\0', sizeof(bc_msg));
         
-        for(int i=0;i<8;i++){
-                            if(Player[i].active == 0)
-                                continue;
-                            int action_now = 2;
-                                                        
-                            sprintf(buffer,"%d,Your score - %d\n", Player[i].player_score);
-                            //printf("buffer=%s\n",buffer);
-                            send(Player[i].player_fd,buffer,strlen(buffer),0);
-                            memset(buffer, '\0', sizeof(buffer));
-        }
+
 
     	printf("turnOf=%d\n",turnOf);
     	action = 1;
@@ -470,7 +460,6 @@ int main(){
     				claiming = 'n';
     				send(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
                     flag = 0;
-                    Player[turnOf].player_score -= 3;
     				//break;
     			}
     			else{
@@ -485,11 +474,6 @@ int main(){
 
     				if(count==6){
     					printf("litt claim accepted\n");
-                        Player[turnOf].player_score += 3;
-                        if(Player[turnOf].team == 'A')
-                            team_score[0] += 5;
-                        else
-                            team_score[1] += 5;
     					for(int a=0;a<6;a++)
     						removeCard(Player[playerSlot[a]].hand,setCards[a]);
     					//break;
@@ -621,4 +605,3 @@ int main(){
     
     return 0;
 }
-
