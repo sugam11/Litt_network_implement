@@ -34,11 +34,12 @@ struct node{
 
 struct player{
 		int num_of_cards;
-		int player_score;
+		int player_score; //-10 if out
 		struct node *hand;
 		char team;
 		char username[32];
         int player_fd;
+        int active;
 };
 
 struct team{
@@ -49,6 +50,20 @@ struct team{
 
 struct player Player[8];
 char str[1024];
+char teams[2];
+
+//returns the player id(i) of the minimum score player in the team.
+int min_team(char team){
+    int min=100000, min_player=-1;
+    for(int i=0; i<8; i++){
+        if(Player[i].team == team && Player[i].player_score != -10)
+            if(Player[i].player_score < min){
+                min = Player[i].player_score;
+                min_player = i;
+            }
+    }
+    return min_player;
+}
 
 void printCards(struct node *n){
 
@@ -98,6 +113,7 @@ struct node *addCard(struct node *head,struct card req){
 struct node *removeCard(struct node *head,struct card req){
 	struct node* current = head;
 	struct node* parent;  // Initialize current
+    parent->next = NULL;
     while (current != NULL){
         if (current->c.cardVal == req.cardVal && current->c.cardSuite == req.cardSuite){
         //if (current->c.cardVal == 0 && current->c.cardSuite == 0){
@@ -134,6 +150,83 @@ void displayHand(int i){
 	//send(Player[i].player_fd,str,strlen(str),0);
 }
 
+    //function to remove two players of each team ( LEVEL IMPLEMENTATION )
+    void remove_two_players(){
+        //1. GET two min players.
+        int min_0=100000, min_1=100000, min_player_0, min_player_1;
+        for(int i =0; i<8 ; i++){
+            if(Player[i].team == teams[0]){
+                if(Player[i].player_score < min_0){
+                    min_0 = Player[i].player_score;
+                    min_player_0 = i;
+                }
+            }
+            else if(Player[i].team == teams[1]){
+                if(Player[i].player_score < min_1){
+                    min_1 = Player[i].player_score;
+                    min_player_1 = i;
+                }
+            }
+        }
+        Player[min_player_0].player_score = 100001;
+        Player[min_player_1].player_score = 100001;
+
+        //redistributing team 0's min player's cards to his/her team members.
+        struct node * current = Player[min_player_0].hand;
+
+        while(current){
+            int player = (rand()) % 8;
+            if(Player[player].team != teams[0] && Player[player].active)
+                continue;
+            addCard(Player[player].hand, current->c);
+            struct node * temp = current->next;
+            current->next = Player[player].hand;
+            Player[player].hand = current;
+            current = temp;
+        }
+
+        //redistributing team 1's min player's cards to his/her team members.
+        current = Player[min_player_1].hand;
+        while(current){
+            int player = (rand()) % 8;
+            if(Player[player].team != teams[1] && Player[player].active)
+                continue;
+            addCard(Player[player].hand, current->c);
+            struct node * temp = current->next;
+            current->next = Player[player].hand;
+            Player[player].hand = current;
+            current = temp;
+        }
+
+        Player[min_player_0].hand = NULL;
+        Player[min_player_1].hand = NULL;
+        
+        Player[min_player_0].active = 0;
+        Player[min_player_1].active = 0;
+        char buffer[1024];
+        int buflen;
+        int action = 4;
+
+        //broad cast this to all
+        for(int i=0;i<8;i++){
+                            if(Player[i].active == 0)
+                                continue;
+                     
+                            sprintf(buffer,"%d,Players - %s of team %c and %s of team %c have been removed. Level UP !\n", action, Player[min_player_0].username,
+                                 teams[0], Player[min_player_1].username, teams[1]);
+                            //printf("buffer=%s\n",buffer);
+                            send(Player[i].player_fd,buffer,strlen(buffer),0);
+                            memset(buffer, '\0', sizeof(buffer));
+        }
+
+        //broadcast quit message to removed players
+        char * kick_msg = "3,kick";
+        send(Player[min_player_0].player_fd,kick_msg,strlen(kick_msg),0);
+        send(Player[min_player_1].player_fd,kick_msg,strlen(kick_msg),0);
+        close(Player[min_player_0].player_fd);
+        close(Player[min_player_1].player_fd);
+    }
+
 int main(){
 	
 	srand(time(0));
@@ -142,7 +235,7 @@ int main(){
     char game_start_message[64] = "Game is Starting.\nDealing cards to each player...\n";
     char wait_msg[64] = "Waiting for other players to connect...\n";
     
-    
+    int count_litts_claimed = 0;
 //Server Variables
     
     int numOfClientConnected = 0;
@@ -151,13 +244,13 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12689;
+	int portnum = 12674;
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
     }
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(portnum);
 	
 	
@@ -184,6 +277,11 @@ int main(){
     B.num_of_players = 0;
     char buffer[1024];
     int buflen;
+
+    teams[0] = '9';
+    teams[1] = '9';
+    int team_count = 0;
+    char prev_team = '0';
     
     while(numOfClientConnected < 8){
         //Client structure Initialisation
@@ -205,6 +303,21 @@ int main(){
         
         printf("username is : %s\n",Player[numOfClientConnected].username);
         Player[numOfClientConnected].team = buffer[buflen-1];
+        Player[numOfClientConnected].active = 1;
+
+        //validating teams
+        if(team_count < 3){
+            int flag = 0;
+            for(int i = 0; i<2; i++)
+                if(buffer[buflen-1] == teams[i])
+                    flag = 1;
+            if(flag == 0)
+                if(team_count < 2)
+                    teams[team_count++] = buffer[buflen-1];
+                else 
+                    printf("----------------------ERROR : more than 2 teams----------------------");
+        }
+
         
         memset(buffer,'\0',sizeof(buffer));
         
@@ -240,7 +353,8 @@ int main(){
     sleep(2);
     
     for(int i = 0;i < 8;i++){
-    	
+    	if(Player[i].active == 0)
+            continue;
     	displayHand(i);
     	
     	/*if(Player[i].team == 'A')
@@ -283,6 +397,7 @@ int main(){
     	
     	if(claiming == 'y'||claiming=='Y'){						//write litt() fxn here
     		int count=0;
+            int flag = 0;
     		struct card setCards[6];
     		int playerSlot[6];
     		
@@ -308,14 +423,24 @@ int main(){
     			for(i=0;i<8;i++){
     				if(strcmp(playerAsked,Player[i].username)==0)
     					break;
-    			}												// i gives position of 'playerasked' in array
+    			}
+
+                // if(Player[turnOf].team == Player[i].team){
+                //     printf("you are asking the opposite team player : ERROR\n");
+                //     continue;
+                // }		
+
+                // i gives position of 'playerasked' in array
     			printf("PLAYERaSKED = %s,i=%d\n",playerAsked,i);
+
+
     			
     			if(searchCard(Player[i].hand,askedCard)==0){	
     				printf("litt claim rejected\n");
     				claiming = 'n';
     				send(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
-    				break;
+                    flag = 0;
+    				//break;
     			}
     			else{
     				printf("card found\n");
@@ -325,18 +450,63 @@ int main(){
     				setCards[count].cardSuite = askedCard.cardSuite;
     				send(Player[turnOf].player_fd,&claiming,sizeof(claiming),0);
     				count++;
+                    flag = 1;
+
     				if(count==6){
     					printf("litt claim accepted\n");
     					for(int a=0;a<6;a++)
     						removeCard(Player[playerSlot[a]].hand,setCards[a]);
-    					break;
+    					//break;
+                        flag = 2;
     				}
+
+                        
     					
     			}
+
+                //setting result_turn to be used in next broadcasting loop.
+                char result_turn[50];
+                switch(flag) {
+                    case 0: strcpy(result_turn, "not found"); break;
+                    case 1: strcpy(result_turn, "found"); break;
+                    case 2: strcpy(result_turn, "found and litt claim successful"); break;
+                }
+
+
+                //BROADCASTING litt claim turns of each playerasked.
+                for(int i=0;i<8;i++){
+                            if(i==turnOf || Player[i].active == 0)
+                                continue;
+                            action = 2;
+                                                        
+                            sprintf(buffer,"%d,Litt Claimed : Player - %s and card - %d %d - %s",action,playerAsked, askedCard.cardSuite, 
+                                askedCard.cardVal, result_turn);
+                            //printf("buffer=%s\n",buffer);
+                            send(Player[i].player_fd,buffer,strlen(buffer),0);
+                            memset(buffer, '\0', sizeof(buffer));
+                }
+
+                //break if litt rejected or accepted.
+                if(flag == 0 || flag ==2){
+                    break;
+                    count_litts_claimed++;
+                }
+                
     			memset(playerAsked,'\0',sizeof(playerAsked));
     		}
+
+            //if(count_litts_claimed % 1 == 0){
+                //int times = count_litts_claimed / 3;
+                //if(times == 1 || times == 2){
+                    remove_two_players();
+                    //update_cards();
+                //}
+
+            //}
+
     		turnOf = (rand())%8;
     		continue;
+                //}
     	} 					 
     	
     	else{												//litt not claimed
@@ -361,7 +531,7 @@ int main(){
     	printf("Before sending broadcast\n");
     	
     	for(int i=0;i<8;i++){
-    		if(i==turnOf)
+    		if(i==turnOf || Player[i].active == 0)
     			continue;
     			
     		displayHand(i);
@@ -375,7 +545,7 @@ int main(){
     	
     	int i;
     	for(i=0;i<8;i++){
-    		if(strcmp(playerAsked,Player[i].username)==0)
+    		if(strcmp(playerAsked,Player[i].username)==0 && Player[i].active == 1 )
     			break;
     	}												// i gives position of 'playerasked' in array
     	
@@ -386,9 +556,11 @@ int main(){
     		printf("inside miss loop\n");
     		turnOf = i;
     		for(int i=0;i<8;i++){
-    			sprintf(buffer,"%d,%s%s",action,lastmove,miss);
-    			send(Player[i].player_fd,buffer,strlen(buffer),0);
-				memset(buffer, '\0', sizeof(buffer));
+                if( Player[i].active == 1){
+        			sprintf(buffer,"%d,%s%s",action,lastmove,miss);
+        			send(Player[i].player_fd,buffer,strlen(buffer),0);
+    				memset(buffer, '\0', sizeof(buffer));
+                }
     		}
     	}
     	else{ 											//hit
@@ -396,12 +568,15 @@ int main(){
     		Player[i].hand = removeCard(Player[i].hand,askedCard);
     		Player[turnOf].hand = addCard(Player[turnOf].hand,askedCard);
     		Player[turnOf].player_score++;
+
     		
     		for(int i=0;i<8;i++){
     			//printf("inside hit for loop\n");
-    			sprintf(buffer,"%d,%s%s",action,lastmove,hit);
-    			send(Player[i].player_fd,buffer,strlen(buffer),0);
-				memset(buffer, '\0', sizeof(buffer));
+                if( Player[i].active == 1){
+        			sprintf(buffer,"%d,%s%s",action,lastmove,hit);
+        			send(Player[i].player_fd,buffer,strlen(buffer),0);
+    				memset(buffer, '\0', sizeof(buffer));
+                }
     		}
     	}
     }

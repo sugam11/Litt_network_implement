@@ -4,10 +4,18 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include<unistd.h>
 
 enum value{
 ace = 1, two, three, four, five, six, seven, eight, nine, ten, jack, queen, king
 };
+
+char value[13][10] = {"ace","two","three","four","five","six","seven","eight","nine","ten","jack","queen","king"};
+
+char suit[4][15] = {"club","spade","diamonds","hearts"};
 
 enum suite{
 clubs = 1, spades, diamonds, hearts
@@ -23,6 +31,20 @@ struct node{
 	struct node *next;
 };
 
+void displayHand(char msg[]){
+    int i = 1;
+    while(i < strlen(msg)){
+        if(msg[i] >= '0' && msg[i] <= '9'){
+            if(msg[i+1] == '-') {
+                printf("%s - %s , ",value[msg[i] - '0' - 1],suit[msg[i+2] - '0' - 1]);
+                i = i + 2;
+            }
+        }
+        i++;
+    }
+    printf("\n");
+}
+
 int main(){
   int clientSocket,action,recvlen;
   char buffer[1024],playerName[32],c;
@@ -33,11 +55,11 @@ int main(){
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
   
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12689);
-  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  serverAddr.sin_port = htons(12690);
+  serverAddr.sin_addr.s_addr = inet_addr("172.17.47.17");
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
-  addr_size = sizeof serverAddr;
+  addr_size = sizeof(serverAddr);
   
   connect(clientSocket, (struct sockaddr *) &serverAddr, addr_size);
 
@@ -47,8 +69,19 @@ int main(){
   memset(buffer, '\0', sizeof(buffer));
   fflush(stdout);
   
-  scanf("%s",buffer);
+  while(1)
+  {
+          scanf("%s",buffer);
+          if(buffer[strlen(buffer)-2]==',' && ( buffer[strlen(buffer)-1]=='A' || buffer[strlen(buffer)-1]=='B') )
+          {
+              break;
+          }
+          else
+            printf("Please enter in the format: username,A or username,B only(without any spaces)\n");
+              
+  }
 
+ char msg[1024];
   send(clientSocket, buffer, strlen(buffer), 0);
   memset(buffer, '\0', sizeof(buffer));
 
@@ -61,6 +94,8 @@ int main(){
   recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   buffer[recvlen] = '\0';
   printf("%s",buffer);			//game start msg + initial hand
+    strncpy(msg,buffer+2,strlen(buffer)-2);
+    displayHand(msg);
   memset(buffer, '\0', sizeof(buffer));
   fflush(stdout);
   
@@ -70,20 +105,34 @@ int main(){
   memset(buffer, '\0', sizeof(buffer));
   fflush(stdout);*/
   
-  char msg[1024];
+ 
   while(1){
   	//printf("While loop entered\n");
   	memset(msg,'\0',sizeof(msg));
-  	printf("before recv\n");
+  	//printf("before recv\n");
   	if((recvlen = recv(clientSocket, &buffer, sizeof(buffer), 0))<0){
   	perror("Failed to bind");
         return -1;
   	}
-  	printf("after recv,recvlen=%d\n",recvlen);
+  	//printf("after recv,recvlen=%d\n",recvlen);
   	buffer[recvlen] = '\0';
   	action = buffer[0] - '0';
   	strncpy(msg,buffer+2,strlen(buffer)-2);
-  	printf("received=%s\naction=%d\nmsg=%s\n",buffer,action,msg);
+  	printf("received = %s\naction = %d\n",buffer,action);
+      short suit_flag = 0;
+      for (int i = 0; i < strlen(msg); i++) {
+          if(msg[i] >= '0' && msg[i] <= '9'){
+              if(suit_flag == 0){
+                  printf("Suit is : %s  & ",suit[msg[i] - '0' - 1]);
+                  suit_flag = 1;
+              }
+              else{
+                  printf("Card is : %s \n",value[msg[i] - '0' - 1]);
+                  suit_flag = 0;
+              }
+          }
+      }
+    displayHand(msg);
   	memset(buffer, '\0', sizeof(buffer));
   	
   	switch (action){
@@ -92,11 +141,21 @@ int main(){
   		printf("Your Turn\n");
   		//recvlen=recv(clientSocket, buffer, sizeof(buffer), 0);
   		//buffer[recvlen] = '\0';
-  		printf("%s\n",msg);			//cards in players hand
+            displayHand(msg);
+  		//printf("%s\n",msg);			//cards in players hand
   		
   		
   		printf("claim LITT?\nRespond with 'y' or 'n'.\n");
-  		scanf(" %c",&c);
+  		while(1)
+          {
+              scanf(" %c",&c);
+              if(c!='Y'&&c!='y'&&c!='n'&&c!='N')
+              {
+                  printf("Respond with 'y' or 'n' only\n");
+              }
+              else
+                  break;
+          }
   		send(clientSocket, &c, sizeof(c), 0);
   		if(c!='Y'&&c!='y'){											//litt not claimed
   			printf("Name the player followed by card as playerName(space)Card Value, Card Suite\n");
@@ -117,7 +176,7 @@ int main(){
   				//memset(playerName, '\0', sizeof(playerName));
   				recv(clientSocket, &c, sizeof(c),0);
   				printf("  c=%c\n",c);
-  				if(count==6)
+  				if(count == 6)
   					break;
   			}
   		}
@@ -129,6 +188,23 @@ int main(){
   		printf("%s\n",msg);			//cards in players hand+bc_msg/last move msg
   		memset(buffer, '\0', sizeof(buffer));
   		break;
+
+      case 3:
+          printf("you have been busted. Low score. No entry to next level");
+          fflush(stdout);
+          memset(buffer, '\0', sizeof(buffer));
+          close(clientSocket);
+          exit(0);
+      case 4:
+            printf("%s\n",msg);			//cards in players hand+bc_msg/last move msg
+            printf("Clearing History of moves\n");
+            if(fork() == 0){
+                execlp("clear","clear");
+            }
+            memset(buffer, '\0', sizeof(buffer));
+            break;
+
+            
   	}
   }
   
