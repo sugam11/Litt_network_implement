@@ -227,7 +227,7 @@ void displayHand(int i){
         close(Player[min_player_1].player_fd);
     }
 
-int main(){
+int main(int argc,char **argv){
 	
 	srand(time(0));
    //Fixed Strings for communication
@@ -244,7 +244,7 @@ int main(){
     memset(&serv_addr, '0', sizeof(serv_addr));
 	
 	int socket_fd;
-	int portnum = 12690;
+	int portnum = atoi(argv[1]);
 	
     if( (socket_fd = socket(AF_INET,SOCK_STREAM,0)) < 0){
         perror("socket failed");
@@ -515,14 +515,14 @@ int main(){
     			memset(playerAsked,'\0',sizeof(playerAsked));
     		}
 
-            //if(count_litts_claimed % 1 == 0){
-                //int times = count_litts_claimed / 3;
-                //if(times == 1 || times == 2){
+            if(count_litts_claimed % 3 == 0){
+                int times = count_litts_claimed / 3;
+                if(times == 1 || times == 2){
                     remove_two_players();
                     //update_cards();
-                //}
+                }
 
-            //}
+            }
             turnOf = (rand())%8;
             while(!Player[turnOf].active)
     		  turnOf = (rand())%8;

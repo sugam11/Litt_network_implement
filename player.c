@@ -45,7 +45,7 @@ void displayHand(char msg[]){
     printf("\n");
 }
 
-int main(){
+int main(int argc,char **argv){
   int clientSocket,action,recvlen;
   char buffer[1024],playerName[32],c;
   struct sockaddr_in serverAddr;
@@ -53,10 +53,9 @@ int main(){
   struct card reqCard;
 
   clientSocket = socket(PF_INET, SOCK_STREAM, 0);
-  
   serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(12690);
-  serverAddr.sin_addr.s_addr = inet_addr("172.17.47.17");
+  serverAddr.sin_port = htons(atoi(argv[2]));
+  serverAddr.sin_addr.s_addr = inet_addr(argv[1]);
   
   memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);  
   addr_size = sizeof(serverAddr);
